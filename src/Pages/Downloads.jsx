@@ -1,5 +1,7 @@
 import React, { useEffect, useState, useCallback, useRef } from "react";
 import JSZip from "jszip";
+import { useStore } from "../Store/Store";
+import { useNavigate } from 'react-router-dom';
 import {
   Container,
   TextField,
@@ -36,13 +38,31 @@ import {
   Stepper,
   Step,
   StepLabel,
+  CircularProgress,
+  Divider,
+  useTheme
 } from "@mui/material";
+import {
+  ExpandMore,
+  AccessTime,
+  DevicesOther,
+  Add,
+  Warning,
+  FilterAlt,
+  CloudDownload,
+  ArrowDownward,
+  CalendarMonth
+} from "@mui/icons-material";
 import Layout from "../Layout/Layout";
 
-
 export default function Downloads() {
+  const navigate = useNavigate();
+  const theme = useTheme();
   // Check if the device is mobile
-  const isMobile = useMediaQuery('(max-width:768px)');
+  const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
+  
+  // Store integration for devices
+  const { GetRegisterdDevices } = useStore();
   
   // Date and time handling
   const formatDate = (date) => {
@@ -55,10 +75,14 @@ export default function Downloads() {
 
   const today = formatDate(new Date());
   
+  // Device states
+  const [deviceOptions, setDeviceOptions] = useState([]);
+  const [deviceLoading, setDeviceLoading] = useState(true);
+  const [noDevicesFound, setNoDevicesFound] = useState(false);
+  
   // Filter states
-  const [selectedDevice, setSelectedDevice] = useState("Device-1");
+  const [selectedDevice, setSelectedDevice] = useState("");
   const [fromDate, setFromDate] = useState(today);
-  const [toDate, setToDate] = useState(today);
   const [fromTime, setFromTime] = useState("01:00:00");
   const [toTime, setToTime] = useState("23:00:00");
   
@@ -96,16 +120,15 @@ export default function Downloads() {
   const speedMeasurementsRef = useRef([]);
   
   const [currentFilter, setCurrentFilter] = useState({
-    selectedDevice: "Device-1",
+    selectedDevice: "",
     fromDate: today,
-    toDate: today,
     fromTime: "01:00:00",
     toTime: "23:00:00",
   });
 
   // User info displayed in the UI
-  const currentUser = "Skoegle";
-  const currentDateTime = new Date().toISOString().replace('T', ' ').substr(0, 19);
+  const currentUser = localStorage.getItem("custommerid") || "User";
+  // const currentDateTime = new Date().toISOString().slice(0, 19).replace("T", " ");
 
   // Steps for the download process
   const downloadSteps = [
@@ -114,6 +137,52 @@ export default function Downloads() {
     'Create ZIP Archive',
     'Complete'
   ];
+
+  // Navigate to device registration page
+  const handleRegisterDevice = () => {
+    navigate('/settings');
+  };
+
+  // Fetch registered devices
+  const fetchDevices = async () => {
+    setDeviceLoading(true);
+    setNoDevicesFound(false);
+    
+    try {
+      const response = await GetRegisterdDevices();
+      
+      if (response?.devices?.length > 0) {
+        const options = response.devices.map((device) => ({
+          value: device.deviceName,
+          label: device.nickname || device.deviceName,
+          code: device.deviceCode
+        }));
+        setDeviceOptions(options);
+        
+        // Initialize with the first device
+        const initialDevice = options[0].value;
+        setSelectedDevice(initialDevice);
+        
+        // Update current filter with selected device
+        setCurrentFilter(prev => ({
+          ...prev,
+          selectedDevice: initialDevice
+        }));
+      } else {
+        // No devices found
+        setNoDevicesFound(true);
+        setDeviceOptions([]);
+        setSelectedDevice("");
+      }
+    } catch (err) {
+      console.error("Error fetching registered devices:", err);
+      showNotification("Failed to fetch registered devices. Please try again later.", "error");
+      setDeviceOptions([]);
+      setNoDevicesFound(true);
+    } finally {
+      setDeviceLoading(false);
+    }
+  };
 
   // Helper function to format time
   const formatTime = (seconds) => {
@@ -139,20 +208,11 @@ export default function Downloads() {
     return `${(bytes / 1048576).toFixed(1)} MB`;
   };
 
-  // Validate form inputs
+  // Validate inputs before fetching videos
   const validateInputs = () => {
     const newErrors = {};
     
-    // Parse dates for comparison
-    const parseDate = (dateStr) => {
-      const [day, month, year] = dateStr.split("-");
-      return new Date(`${year}-${month}-${day}`);
-    };
-
-    if (parseDate(fromDate) > parseDate(toDate)) {
-      newErrors.date = "From Date cannot be later than To Date.";
-    }
-    
+    // Only validate time now since we don't have "to date" anymore
     if (fromTime > toTime) {
       newErrors.time = "From Time cannot be later than To Time.";
     }
@@ -163,6 +223,11 @@ export default function Downloads() {
 
   // Handle filter application
   const handleFilter = () => {
+    if (!selectedDevice) {
+      showNotification("Please select a device first", "warning");
+      return;
+    }
+    
     if (validateInputs()) {
       setFetchingData(true);
       setSelectedVideos(new Set()); // Reset selections when filter changes
@@ -170,7 +235,6 @@ export default function Downloads() {
       const newFilter = {
         selectedDevice,
         fromDate,
-        toDate,
         fromTime,
         toTime,
       };
@@ -208,11 +272,14 @@ export default function Downloads() {
 
   // Fetch videos from API with error handling
   const fetchVideos = useCallback(async () => {
+    if (!currentFilter.selectedDevice) return;
+    
     setFetchingData(true);
     
     try {
+      // Using the same fromDate for both fromdate and todate params
       const response = await fetch(
-        `https://production-server-tygz.onrender.com/api/dmarg/filtervidios?fromdate=${currentFilter.fromDate}&todate=${currentFilter.toDate}&fromtime=${currentFilter.fromTime}&totime=${currentFilter.toTime}&deviceName=${currentFilter.selectedDevice}`
+        `https://production-server-tygz.onrender.com/api/dmarg/filtervidios?fromdate=${currentFilter.fromDate}&todate=${currentFilter.fromDate}&fromtime=${currentFilter.fromTime}&totime=${currentFilter.toTime}&deviceName=${currentFilter.selectedDevice}`
       );
       
       if (!response.ok) {
@@ -444,398 +511,499 @@ export default function Downloads() {
     setShowFilters(!showFilters);
   };
 
+  // Fetch devices on component mount
+  useEffect(() => {
+    fetchDevices();
+  }, []);
+
   // Fetch videos when filter changes
   useEffect(() => {
-    fetchVideos();
-  }, [fetchVideos]);
+    if (currentFilter.selectedDevice) {
+      fetchVideos();
+    }
+  }, [fetchVideos, currentFilter]);
+
+  // No Devices Found Component
+  const NoDevicesFound = () => (
+    <Box 
+      sx={{ 
+        display: 'flex', 
+        flexDirection: 'column', 
+        alignItems: 'center', 
+        justifyContent: 'center',
+        p: 5,
+        minHeight: 400,
+        textAlign: 'center'
+      }}
+    >
+      <DevicesOther sx={{ fontSize: 80, color: 'text.secondary', mb: 3 }} />
+      
+      <Typography variant="h5" gutterBottom>
+        No Devices Registered
+      </Typography>
+      
+      <Typography variant="body1" color="text.secondary" paragraph>
+        You don't have any registered devices, {currentUser}. Register a device to start downloading videos.
+      </Typography>
+      
+      <Button 
+        variant="contained" 
+        color="primary" 
+        startIcon={<Add />}
+        size="large"
+        onClick={handleRegisterDevice}
+        sx={{ mt: 2 }}
+      >
+        Register New Device
+      </Button>
+      
+      <Button 
+        variant="outlined"
+        onClick={fetchDevices}
+        startIcon={<Refresh />}
+        sx={{ mt: 2 }}
+      >
+        Refresh
+      </Button>
+    </Box>
+  );
 
   return (
-        <Layout title="Dmarg - Login">
-    
-    <Container maxWidth="lg" sx={{ py: 3 }}>
-      <Card sx={{ mb: 3, boxShadow: 2 }}>
-        <CardContent>
-          <Grid container spacing={2} alignItems="center">
-            <Grid item xs={12} sm={6}>
-              <Typography variant="h4" sx={{ fontWeight: 'bold', color: '#1976d2' }}>
-                Video Downloads
-              </Typography>
-            </Grid>
-            <Grid item xs={12} sm={6}>
-              <Box sx={{ textAlign: { xs: 'left', sm: 'right' } }}>
-                <Typography variant="body2" color="textSecondary">
-                  Current Dev: {currentUser}
-                </Typography>
-                <Typography variant="body2" color="textSecondary">
-                  {currentDateTime}
-                </Typography>
-              </Box>
-            </Grid>
-          </Grid>
-        </CardContent>
-      </Card>
-      
-      {/* Mobile filter toggle */}
-      {isMobile && (
-        <Button
-          variant="outlined"
-          onClick={toggleFilters}
-          fullWidth
-          sx={{ mb: 2 }}
-        >
-          {showFilters ? "Hide Filters" : "Show Filters"}
-        </Button>
-      )}
-      
-      {/* Filter section */}
-      {showFilters && (
+    <Layout title="Dmarg - Video Downloads">
+      <Container maxWidth="lg" sx={{ py: 3 }}>
         <Card sx={{ mb: 3, boxShadow: 2 }}>
           <CardContent>
-            <Typography variant="h6" gutterBottom>
-              Filter Options
-            </Typography>
-            
-            <Grid container spacing={2}>
+            <Grid container spacing={2} alignItems="center">
               <Grid item xs={12} sm={6}>
-                <TextField
-                  select
-                  label="Select Device"
-                  value={selectedDevice}
-                  onChange={(e) => setSelectedDevice(e.target.value)}
-                  fullWidth
-                  variant="outlined"
-                  margin="normal"
-                >
-                  <MenuItem value="Device-1">Device 1 - Kochi Car</MenuItem>
-                </TextField>
+                <Typography variant="h4" sx={{ fontWeight: 'bold', color: '#1976d2' }}>
+                  Video Downloads
+                </Typography>
               </Grid>
-              
-              <Grid item xs={12} sm={6} container spacing={2}>
-                <Grid item xs={6}>
-                  <TextField
-                    type="date"
-                    label="From Date"
-                    InputLabelProps={{ shrink: true }}
-                    value={fromDate.split("-").reverse().join("-")}
-                    onChange={(e) => setFromDate(formatDate(e.target.value))}
-                    fullWidth
-                    variant="outlined"
-                    margin="normal"
-                    error={!!errors.date}
-                    helperText={errors.date}
-                  />
-                </Grid>
-                <Grid item xs={6}>
-                  <TextField
-                    type="date"
-                    label="To Date"
-                    InputLabelProps={{ shrink: true }}
-                    value={toDate.split("-").reverse().join("-")}
-                    onChange={(e) => setToDate(formatDate(e.target.value))}
-                    fullWidth
-                    variant="outlined"
-                    margin="normal"
-                  />
-                </Grid>
-              </Grid>
-              
-              <Grid item xs={12} sm={6} container spacing={2}>
-                <Grid item xs={6}>
-                  <TextField
-                    type="time"
-                    label="From Time"
-                    InputLabelProps={{ shrink: true }}
-                    value={fromTime}
-                    onChange={(e) => setFromTime(e.target.value)}
-                    fullWidth
-                    variant="outlined"
-                    margin="normal"
-                    error={!!errors.time}
-                    helperText={errors.time}
-                  />
-                </Grid>
-                <Grid item xs={6}>
-                  <TextField
-                    type="time"
-                    label="To Time"
-                    InputLabelProps={{ shrink: true }}
-                    value={toTime}
-                    onChange={(e) => setToTime(e.target.value)}
-                    fullWidth
-                    variant="outlined"
-                    margin="normal"
-                  />
-                </Grid>
-              </Grid>
-              
-              <Grid item xs={12}>
-                <Button
-                  variant="contained"
-                  onClick={handleFilter}
-                  fullWidth
-                  disabled={fetchingData}
-                >
-                  Apply Filter
-                </Button>
+              <Grid item xs={12} sm={6}>
+                <Box sx={{ textAlign: { xs: 'left', sm: 'right' } }}>
+                  {/* <Typography variant="body2" color="textSecondary" sx={{ display: 'flex', alignItems: 'center', justifyContent: { xs: 'flex-start', sm: 'flex-end' } }}>
+                    <AccessTime fontSize="small" sx={{ mr: 0.5 }} />
+                    Current Date and Time (UTC - YYYY-MM-DD HH:MM:SS formatted): {currentDateTime}
+                  </Typography> */}
+                  <Typography variant="body2" color="textSecondary">
+                    Current User's Login: {currentUser}
+                  </Typography>
+                </Box>
               </Grid>
             </Grid>
           </CardContent>
         </Card>
-      )}
-      
-      {/* Status display */}
-      {fetchingData && (
-        <Box sx={{ width: '100%', mb: 2 }}>
-          <LinearProgress />
-          <Typography variant="body2" sx={{ mt: 1, textAlign: 'center' }}>
-            Fetching videos...
-          </Typography>
-        </Box>
-      )}
-      
-      {/* Video list and selection controls */}
-      {!fetchingData && videoData.length > 0 && (
-        <Card sx={{ boxShadow: 2 }}>
-          <CardContent>
-            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2, flexWrap: 'wrap', gap: 1 }}>
-              <FormControlLabel
-                control={
-                  <Checkbox
-                    checked={selectedVideos.size === videoData.length && videoData.length > 0}
-                    onChange={handleSelectAll}
-                    indeterminate={selectedVideos.size > 0 && selectedVideos.size < videoData.length}
-                  />
-                }
-                label={`Select All (${videoData.length})`}
-              />
-              
+        
+        {deviceLoading ? (
+          // Loading state for devices
+          <Box sx={{ 
+            display: 'flex', 
+            flexDirection: 'column',
+            alignItems: 'center', 
+            justifyContent: 'center',
+            minHeight: '50vh'
+          }}>
+            <CircularProgress size={60} />
+            <Typography variant="h6" sx={{ mt: 3 }}>
+              Loading devices...
+            </Typography>
+          </Box>
+        ) : noDevicesFound ? (
+          // No devices found state
+          <Paper elevation={3} sx={{ borderRadius: 2, overflow: 'hidden' }}>
+            <NoDevicesFound />
+          </Paper>
+        ) : (
+          <>
+            {/* Mobile filter toggle */}
+            {isMobile && (
               <Button
-                variant="contained"
-                color="secondary"
-                onClick={handleDownloadAll}
-                disabled={selectedVideos.size === 0 || isDownloading}
+                variant="outlined"
+                onClick={toggleFilters}
+                fullWidth
+                sx={{ mb: 2 }}
+                startIcon={<FilterAlt />}
               >
-                {isDownloading ? "Downloading..." : `Download Selected (${selectedVideos.size})`}
+                {showFilters ? "Hide Filters" : "Show Filters"}
               </Button>
-            </Box>
+            )}
             
-            {isDownloading && (
-              <Card sx={{ p: 2, mb: 2, bgcolor: '#f5f5f5' }}>
-                <Stepper activeStep={activeStep} alternativeLabel sx={{ mb: 3 }}>
-                  {downloadSteps.map((label) => (
-                    <Step key={label}>
-                      <StepLabel>{label}</StepLabel>
-                    </Step>
-                  ))}
-                </Stepper>
-                
-                <Typography variant="subtitle1" gutterBottom>
-                  {downloadSteps[activeStep]}
-                  {activeStep === 1 && totalBatches > 0 && ` (Batch ${currentBatch} of ${totalBatches})`}
-                </Typography>
-                
-                <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
-                  <Box sx={{ width: '100%', mr: 1 }}>
-                    <LinearProgress 
-                      variant="determinate" 
-                      value={activeStep === 1 ? batchProgress : downloadProgress} 
-                    />
-                  </Box>
-                  <Box sx={{ minWidth: 35 }}>
-                    <Typography variant="body2" color="text.secondary">
-                      {activeStep === 1 ? `${Math.round(batchProgress)}%` : `${Math.round(downloadProgress)}%`}
-                    </Typography>
-                  </Box>
-                </Box>
-                
-                <Grid container spacing={2}>
-                  <Grid item xs={12} sm={6}>
-                    <Typography variant="body2" color="text.secondary">
-                      Files: {processedFiles} / {selectedVideos.size}
-                    </Typography>
-                  </Grid>
-                  <Grid item xs={12} sm={6}>
-                    <Typography variant="body2" color="text.secondary" align="right">
-                      Speed: {downloadSpeed.toFixed(1)} KB/s
-                    </Typography>
-                  </Grid>
-                </Grid>
-                
-                <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
-                  Downloaded: {formatFileSize(downloadedSize)} / Est. {formatFileSize(totalSize)}
-                </Typography>
-                
-                {estimatedTimeRemaining && (
-                  <Typography variant="body2" color="text.secondary">
-                    Estimated time remaining: {estimatedTimeRemaining}
+            {/* Filter section */}
+            {showFilters && (
+              <Card sx={{ mb: 3, boxShadow: 2 }}>
+                <CardContent>
+                  <Typography variant="h6" gutterBottom sx={{ 
+                    display: 'flex', 
+                    alignItems: 'center', 
+                    borderBottom: '1px solid #eee',
+                    pb: 1,
+                    mb: 2
+                  }}>
+                    <FilterAlt fontSize="small" sx={{ mr: 1 }} />
+                    Filter Options
                   </Typography>
-                )}
-                
-                {activeStep === 2 && (
-                  <Typography variant="body2" color="text.secondary">
-                    Creating ZIP archive...
-                  </Typography>
-                )}
+                  
+                  <Grid container spacing={2}>
+                    <Grid item xs={12} sm={6}>
+                      <TextField
+                        select
+                        label="Select Device"
+                        value={selectedDevice}
+                        onChange={(e) => setSelectedDevice(e.target.value)}
+                        fullWidth
+                        variant="outlined"
+                        margin="normal"
+                      >
+                        {deviceOptions.map((device) => (
+                          <MenuItem key={device.value} value={device.value}>
+                            {device.label} ({device.value})
+                          </MenuItem>
+                        ))}
+                      </TextField>
+                    </Grid>
+                    
+                    {/* Single Date Selection */}
+                    <Grid item xs={12} sm={6}>
+                      {/* <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
+                        <CalendarMonth color="primary" sx={{ mr: 1 }} />
+                        <Typography variant="subtitle2">Select Date</Typography>
+                      </Box> */}
+                      
+                      <TextField
+                        type="date"
+                        label="Date"
+                        InputLabelProps={{ shrink: true }}
+                        value={fromDate.split("-").reverse().join("-")}
+                        onChange={(e) => setFromDate(formatDate(e.target.value))}
+                        fullWidth
+                        variant="outlined"
+                        margin="normal"
+                      />
+                    </Grid>
+                    
+                    <Grid item xs={12} sm={6} container spacing={2}>
+                      <Grid item xs={6}>
+                        <TextField
+                          type="time"
+                          label="From Time"
+                          InputLabelProps={{ shrink: true }}
+                          value={fromTime}
+                          onChange={(e) => setFromTime(e.target.value)}
+                          fullWidth
+                          variant="outlined"
+                          margin="normal"
+                          error={!!errors.time}
+                          helperText={errors.time}
+                        />
+                      </Grid>
+                      <Grid item xs={6}>
+                        <TextField
+                          type="time"
+                          label="To Time"
+                          InputLabelProps={{ shrink: true }}
+                          value={toTime}
+                          onChange={(e) => setToTime(e.target.value)}
+                          fullWidth
+                          variant="outlined"
+                          margin="normal"
+                        />
+                      </Grid>
+                    </Grid>
+                    
+                    <Grid item xs={12}>
+                      <Button
+                        variant="contained"
+                        onClick={handleFilter}
+                        fullWidth
+                        disabled={fetchingData}
+                        startIcon={<FilterAlt />}
+                        sx={{ mt: 1 }}
+                      >
+                        {fetchingData ? "Loading..." : "Apply Filter"}
+                      </Button>
+                    </Grid>
+                  </Grid>
+                </CardContent>
               </Card>
             )}
-
-            {/* Note about video sources */}
-            <Alert severity="info" sx={{ mb: 2 }}>
-              Videos are downloaded from secure cloud storage. Download speeds may vary based on your internet connection.
-            </Alert>
-
-            {isMobile ? (
-              // Mobile card view
-              <Box sx={{ mt: 2 }}>
-                {videoData.map((video) => (
-                  <Accordion key={video._id} sx={{ mb: 1 }}>
-                    <AccordionSummary expandIcon={"▼"}>
-                      <Box sx={{ display: 'flex', alignItems: 'center', width: '100%' }}>
-                        <Checkbox
-                          checked={selectedVideos.has(video._id)}
-                          onChange={(e) => {
-                            e.stopPropagation();
-                            handleCheckboxChange(video._id);
-                          }}
-                          onClick={(e) => e.stopPropagation()}
-                          edge="start"
-                        />
-                        <Typography sx={{ ml: 1, flexGrow: 1 }}>
-                          {video.filename}
-                        </Typography>
-                      </Box>
-                    </AccordionSummary>
-                    <AccordionDetails>
-                      <Typography variant="body2"><strong>Date:</strong> {video.date}</Typography>
-                      <Typography variant="body2"><strong>Time:</strong> {video.fromtime} - {video.totime}</Typography>
-                      <Button 
-                        variant="outlined"
-                        onClick={() => handleIndividualDownload(video)}
-                        sx={{ mt: 1 }}
-                        size="small"
-                        fullWidth
-                      >
-                        Open Video
-                      </Button>
-                    </AccordionDetails>
-                  </Accordion>
-                ))}
+            
+            {/* Status display */}
+            {fetchingData && (
+              <Box sx={{ width: '100%', mb: 2 }}>
+                <LinearProgress />
+                <Typography variant="body2" sx={{ mt: 1, textAlign: 'center' }}>
+                  Fetching videos...
+                </Typography>
               </Box>
-            ) : (
-              // Desktop table view
-              <TableContainer component={Paper} sx={{ maxHeight: '60vh', overflow: 'auto' }}>
-                <Table stickyHeader>
-                  <TableHead>
-                    <TableRow>
-                      <TableCell padding="checkbox">Select</TableCell>
-                      <TableCell>Filename</TableCell>
-                      <TableCell>Date</TableCell>
-                      <TableCell>From Time</TableCell>
-                      <TableCell>To Time</TableCell>
-                      <TableCell>Action</TableCell>
-                    </TableRow>
-                  </TableHead>
-                  <TableBody>
-                    {videoData.map((video) => (
-                      <TableRow 
-                        key={video._id} 
-                        hover 
-                        selected={selectedVideos.has(video._id)}
-                      >
-                        <TableCell padding="checkbox">
-                          <Checkbox
-                            checked={selectedVideos.has(video._id)}
-                            onChange={() => handleCheckboxChange(video._id)}
-                          />
-                        </TableCell>
-                        <TableCell>{video.filename}</TableCell>
-                        <TableCell>{video.date}</TableCell>
-                        <TableCell>{video.fromtime}</TableCell>
-                        <TableCell>{video.totime}</TableCell>
-                        <TableCell>
-                          <Button
-                            size="small"
-                            onClick={() => handleIndividualDownload(video)}
-                            variant="text"
-                          >
-                            Open Video
-                          </Button>
-                        </TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-              </TableContainer>
             )}
-          </CardContent>
-        </Card>
-      )}
-      
-      {/* No videos message */}
-      {!fetchingData && videoData.length === 0 && (
-        <Alert severity="info" sx={{ mt: 2 }}>
-          No videos found for the selected filters. Please try different filter criteria.
-        </Alert>
-      )}
-      
-      {/* Failed Downloads Dialog */}
-      <Dialog
-        open={downloadDialogOpen}
-        onClose={() => setDownloadDialogOpen(false)}
-        maxWidth="sm"
-        fullWidth
-      >
-        <DialogTitle>Failed Downloads</DialogTitle>
-        <DialogContent>
-          <Typography variant="body1" paragraph>
-            Some videos couldn't be downloaded directly due to security restrictions.
-            You can download them individually by clicking on each link below:
-          </Typography>
-          
-          <List>
-            {failedDownloads.map((item, index) => (
-              <ListItem key={index}>
-                <ListItemText 
-                  primary={item.filename}
-                  secondary={item.error}
-                />
-                <Button
-                  variant="outlined"
-                  size="small"
-                  onClick={() => {
-                    const video = videoData.find(v => v.filename === item.filename);
-                    if (video) handleIndividualDownload(video);
-                  }}
-                >
-                  Download
-                </Button>
-              </ListItem>
-            ))}
-          </List>
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={() => setDownloadDialogOpen(false)} color="primary">
-            Close
-          </Button>
-        </DialogActions>
-      </Dialog>
-      
-      {/* Notifications */}
-      <Snackbar
-        open={showSnackbar}
-        autoHideDuration={6000}
-        onClose={() => setShowSnackbar(false)}
-        anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
-      >
-        <Alert 
-          onClose={() => setShowSnackbar(false)} 
-          severity={snackbarSeverity}
-          sx={{ width: '100%' }}
+            
+            {/* Video list and selection controls */}
+            {!fetchingData && videoData.length > 0 && (
+              <Card sx={{ boxShadow: 2 }}>
+                <CardContent>
+                  <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2, flexWrap: 'wrap', gap: 1 }}>
+                    <FormControlLabel
+                      control={
+                        <Checkbox
+                          checked={selectedVideos.size === videoData.length && videoData.length > 0}
+                          onChange={handleSelectAll}
+                          indeterminate={selectedVideos.size > 0 && selectedVideos.size < videoData.length}
+                          color="primary"
+                        />
+                      }
+                      label={`Select All (${videoData.length})`}
+                    />
+                    
+                    <Button
+                      variant="contained"
+                      color="primary"
+                      onClick={handleDownloadAll}
+                      disabled={selectedVideos.size === 0 || isDownloading}
+                      startIcon={<CloudDownload />}
+                    >
+                      {isDownloading ? "Downloading..." : `Download Selected (${selectedVideos.size})`}
+                    </Button>
+                  </Box>
+                  
+                  {isDownloading && (
+                    <Card sx={{ p: 2, mb: 2, bgcolor: '#f5f5f5' }}>
+                      <Stepper activeStep={activeStep} alternativeLabel sx={{ mb: 3 }}>
+                        {downloadSteps.map((label) => (
+                          <Step key={label}>
+                            <StepLabel>{label}</StepLabel>
+                          </Step>
+                        ))}
+                      </Stepper>
+                      
+                      <Typography variant="subtitle1" gutterBottom>
+                        {downloadSteps[activeStep]}
+                        {activeStep === 1 && totalBatches > 0 && ` (Batch ${currentBatch} of ${totalBatches})`}
+                      </Typography>
+                      
+                      <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
+                        <Box sx={{ width: '100%', mr: 1 }}>
+                          <LinearProgress 
+                            variant="determinate" 
+                            value={activeStep === 1 ? batchProgress : downloadProgress} 
+                          />
+                        </Box>
+                        <Box sx={{ minWidth: 35 }}>
+                          <Typography variant="body2" color="text.secondary">
+                            {activeStep === 1 ? `${Math.round(batchProgress)}%` : `${Math.round(downloadProgress)}%`}
+                          </Typography>
+                        </Box>
+                      </Box>
+                      
+                      <Grid container spacing={2}>
+                        <Grid item xs={12} sm={6}>
+                          <Typography variant="body2" color="text.secondary">
+                            Files: {processedFiles} / {selectedVideos.size}
+                          </Typography>
+                        </Grid>
+                        <Grid item xs={12} sm={6}>
+                          <Typography variant="body2" color="text.secondary" align="right">
+                            Speed: {downloadSpeed.toFixed(1)} KB/s
+                          </Typography>
+                        </Grid>
+                      </Grid>
+                      
+                      <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
+                        Downloaded: {formatFileSize(downloadedSize)} / Est. {formatFileSize(totalSize)}
+                      </Typography>
+                      
+                      {estimatedTimeRemaining && (
+                        <Typography variant="body2" color="text.secondary">
+                          Estimated time remaining: {estimatedTimeRemaining}
+                        </Typography>
+                      )}
+                      
+                      {activeStep === 2 && (
+                        <Typography variant="body2" color="text.secondary">
+                          Creating ZIP archive...
+                        </Typography>
+                      )}
+                    </Card>
+                  )}
+
+                  {/* Note about video sources */}
+                  <Alert severity="info" sx={{ mb: 2 }}>
+                    Videos are downloaded from secure cloud storage. Download speeds may vary based on your internet connection.
+                  </Alert>
+
+                  {isMobile ? (
+                    // Mobile card view
+                    <Box sx={{ mt: 2 }}>
+                      {videoData.map((video) => (
+                        <Accordion key={video._id} sx={{ mb: 1 }}>
+                          <AccordionSummary expandIcon={<ExpandMore />}>
+                            <Box sx={{ display: 'flex', alignItems: 'center', width: '100%' }}>
+                              <Checkbox
+                                checked={selectedVideos.has(video._id)}
+                                onChange={(e) => {
+                                  e.stopPropagation();
+                                  handleCheckboxChange(video._id);
+                                }}
+                                onClick={(e) => e.stopPropagation()}
+                                edge="start"
+                                color="primary"
+                              />
+                              <Typography sx={{ ml: 1, flexGrow: 1 }}>
+                                {video.filename}
+                              </Typography>
+                            </Box>
+                          </AccordionSummary>
+                          <AccordionDetails>
+                            <Typography variant="body2"><strong>Date:</strong> {video.date}</Typography>
+                            <Typography variant="body2"><strong>Time:</strong> {video.fromtime} - {video.totime}</Typography>
+                            <Button 
+                              variant="outlined"
+                              onClick={() => handleIndividualDownload(video)}
+                              sx={{ mt: 1 }}
+                              size="small"
+                              fullWidth
+                              startIcon={<ArrowDownward />}
+                            >
+                              Open Video
+                            </Button>
+                          </AccordionDetails>
+                        </Accordion>
+                      ))}
+                    </Box>
+                  ) : (
+                    // Desktop table view
+                    <TableContainer component={Paper} sx={{ maxHeight: '60vh', overflow: 'auto' }}>
+                      <Table stickyHeader>
+                        <TableHead>
+                          <TableRow>
+                            <TableCell padding="checkbox">Select</TableCell>
+                            <TableCell>Filename</TableCell>
+                            <TableCell>Date</TableCell>
+                            <TableCell>From Time</TableCell>
+                            <TableCell>To Time</TableCell>
+                            <TableCell>Action</TableCell>
+                          </TableRow>
+                        </TableHead>
+                        <TableBody>
+                          {videoData.map((video) => (
+                            <TableRow 
+                              key={video._id} 
+                              hover 
+                              selected={selectedVideos.has(video._id)}
+                            >
+                              <TableCell padding="checkbox">
+                                <Checkbox
+                                  checked={selectedVideos.has(video._id)}
+                                  onChange={() => handleCheckboxChange(video._id)}
+                                  color="primary"
+                                />
+                              </TableCell>
+                              <TableCell>{video.filename}</TableCell>
+                              <TableCell>{video.date}</TableCell>
+                              <TableCell>{video.fromtime}</TableCell>
+                              <TableCell>{video.totime}</TableCell>
+                              <TableCell>
+                                <Button
+                                  size="small"
+                                  onClick={() => handleIndividualDownload(video)}
+                                  variant="outlined"
+                                  startIcon={<ArrowDownward />}
+                                >
+                                  Open Video
+                                </Button>
+                              </TableCell>
+                            </TableRow>
+                          ))}
+                        </TableBody>
+                      </Table>
+                    </TableContainer>
+                  )}
+                </CardContent>
+              </Card>
+            )}
+            
+            {/* No videos message */}
+            {!fetchingData && videoData.length === 0 && currentFilter.selectedDevice && (
+              <Alert severity="info" sx={{ mt: 2 }}>
+                No videos found for the selected filters. Please try different filter criteria.
+              </Alert>
+            )}
+            
+            {/* Device management buttons */}
+            <Box sx={{ display: 'flex', justifyContent: 'flex-end', mt: 2 }}>
+              <Button
+                variant="outlined"
+                size="small"
+                startIcon={<Add />}
+                onClick={handleRegisterDevice}
+              >
+                Register New Device
+              </Button>
+            </Box>
+          </>
+        )}
+        
+        {/* Failed Downloads Dialog */}
+        <Dialog
+          open={downloadDialogOpen}
+          onClose={() => setDownloadDialogOpen(false)}
+          maxWidth="sm"
+          fullWidth
         >
-          {snackbarMessage}
-        </Alert>
-      </Snackbar>
-    </Container>
+          <DialogTitle sx={{ display: 'flex', alignItems: 'center' }}>
+            <Warning color="error" sx={{ mr: 1 }} /> 
+            Failed Downloads
+          </DialogTitle>
+          <DialogContent>
+            <Typography variant="body1" paragraph>
+              Some videos couldn't be downloaded directly due to security restrictions.
+              You can download them individually by clicking on each link below:
+            </Typography>
+            
+            <List>
+              {failedDownloads.map((item, index) => (
+                <ListItem key={index}>
+                  <ListItemText 
+                    primary={item.filename}
+                    secondary={item.error}
+                  />
+                  <Button
+                    variant="outlined"
+                    size="small"
+                    onClick={() => {
+                      const video = videoData.find(v => v.filename === item.filename);
+                      if (video) handleIndividualDownload(video);
+                    }}
+                    startIcon={<ArrowDownward />}
+                  >
+                    Download
+                  </Button>
+                </ListItem>
+              ))}
+            </List>
+          </DialogContent>
+          <DialogActions>
+            <Button onClick={() => setDownloadDialogOpen(false)} color="primary">
+              Close
+            </Button>
+          </DialogActions>
+        </Dialog>
+        
+        {/* Notifications */}
+        <Snackbar
+          open={showSnackbar}
+          autoHideDuration={6000}
+          onClose={() => setShowSnackbar(false)}
+          anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
+        >
+          <Alert 
+            onClose={() => setShowSnackbar(false)} 
+            severity={snackbarSeverity}
+            sx={{ width: '100%' }}
+          >
+            {snackbarMessage}
+          </Alert>
+        </Snackbar>
+      </Container>
     </Layout>
   );
 }

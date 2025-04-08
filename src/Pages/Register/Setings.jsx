@@ -86,7 +86,7 @@ export default function RegisterDevice() {
   };
 
   // Register device with server
-  const registerDevsice = async () => {
+  const registerDevice = async () => {
     if (!nickname) {
       showNotification("Nickname is required", "error");
       return;
@@ -100,14 +100,14 @@ export default function RegisterDevice() {
       await addDevice(deviceName, cleanedDeviceCode, custommerId, nickname);
 
       setLoadingStep("Registering device with your customer ID...");
-      // Sample coordinates - in a production app, you might want to get actual location
-      await logRealtimeData(
-        deviceName, 
-        37.7749,  // latitude
-        -122.4194, // longitude
-        "06-02-2025", // date
-        "14:30:00"  // time
-      );
+      // // Sample coordinates - in a production app, you might want to get actual location
+      // await logRealtimeData(
+      //   deviceName, 
+      //   37.7749,  // latitude
+      //   -122.4194, // longitude
+      //   "06-02-2025", // date
+      //   "14:30:00"  // time
+      // );
 
       setLoadingStep("Adding device...");
       setSuccess(true);
@@ -156,7 +156,7 @@ export default function RegisterDevice() {
   };
 
   return (
-    <Layout title={"Dmarg - Register Device"}>
+    <Layout title={"Vmarg - Register Device"}>
       <Container maxWidth="md" sx={{ mt: 3, mb: 4 }}>
         <Paper 
           elevation={3} 
