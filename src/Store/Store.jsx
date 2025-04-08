@@ -21,8 +21,8 @@ export function StoreProvider({ children }) {
   const [isAdmin, setisAdmin] = useState(localStorage?.getItem("isAdmin") === "true" || false);
   const [token, settoken] = useState(localStorage?.getItem("token") || "");
   const [skipotp, setskipotp] = useState(true);
-  const [skipsmsotp, setskipsmsotp] = useState(false);
-  const [skipemailotp, setskipemailotp] = useState(false);
+  const [skipsmsotp, setskipsmsotp] = useState(true);
+  const [skipemailotp, setskipemailotp] = useState(true);
 
 
   useEffect(() => {
