@@ -4,13 +4,14 @@ import { useStore } from "./Store/Store";
 import { Box, CircularProgress } from "@mui/material";
 import Layout from "./Layout/Layout"; // Ensure Layout is imported
 import Live from "./Pages/Live/Live";
-import Track from "./Pages/Track";
 import Profile from "./Pages/Profile";
 import Admin from "./Pages/Admin/Admin";
 import Forgotpassword from "./Pages/Forgotpassword";
 import Resetpassword from "./Pages/Resetpassword";
 import Serverissue from "./Pages/Serverissue"; // Server Issue page
 import Downloads from "./Pages/Downloads";
+import Home from "./Pages/Home";
+import LivePreview from "./Pages/LivePreview";
 
 // Lazy loading components
 const Login = React.lazy(() => import("./Pages/Login"));
@@ -35,9 +36,13 @@ export default function App() {
   const AdminRoute = ({ element }) => (isLogin && isAdmin ? element : <Navigate to="/login" />);
 
   const router = createBrowserRouter([
+    // {
+    //   path: "/",
+    //   element: maintanince ? <Serverissue /> : <ProtectedRoute element={<Live />} />,
+    // },
     {
       path: "/",
-      element: maintanince ? <Serverissue /> : <ProtectedRoute element={<Live />} />,
+      element: maintanince ? <Serverissue /> :<ProtectedRoute element={<Home/>} />,
     },
     {
       path: "/signup",
@@ -59,10 +64,10 @@ export default function App() {
       path: "/settings",
       element: maintanince ? <Serverissue /> : <ProtectedRoute element={<Setings />} />,
     },
-    {
-      path: "/track",
-      element: maintanince ? <Serverissue /> : <ProtectedRoute element={<Track />} />,
-    },
+    // {
+    //   element: maintanince ? <Serverissue /> : <ProtectedRoute element={<Track />} />,
+    // },   path: "/track",
+    //
     {
       path: "/profile",
       element: maintanince ? <Serverissue /> : <ProtectedRoute element={<Profile />} />,
@@ -73,8 +78,20 @@ export default function App() {
     },
     {
       path : "/downloads",
-      element: maintanince ? <Serverissue /> : <GuestRoute element={<Downloads />} />,
+      element: maintanince ? <Serverissue /> : <ProtectedRoute element={<Downloads />} />,
     },
+    {
+      path: "/home",
+      element: maintanince ? <Serverissue /> : <ProtectedRoute element={<LivePreview />} />,
+    },
+    {
+      path: "/",
+      element: maintanince ? <Serverissue /> : <ProtectedRoute element={<LivePreview />} />,
+    },
+    // {
+    //   path :"/home",
+    //   element: maintanince ? <Serverissue /> : <ProtectedRoute element={<Home />} />,
+    // },
   ]);
 
   return (

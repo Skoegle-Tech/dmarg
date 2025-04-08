@@ -37,6 +37,8 @@ import {
   Step,
   StepLabel,
 } from "@mui/material";
+import Layout from "../Layout/Layout";
+
 
 export default function Downloads() {
   // Check if the device is mobile
@@ -102,7 +104,7 @@ export default function Downloads() {
   });
 
   // User info displayed in the UI
-  const currentUser = "ManojGowda89";
+  const currentUser = "Skoegle";
   const currentDateTime = new Date().toISOString().replace('T', ' ').substr(0, 19);
 
   // Steps for the download process
@@ -448,6 +450,8 @@ export default function Downloads() {
   }, [fetchVideos]);
 
   return (
+        <Layout title="Dmarg - Login">
+    
     <Container maxWidth="lg" sx={{ py: 3 }}>
       <Card sx={{ mb: 3, boxShadow: 2 }}>
         <CardContent>
@@ -832,5 +836,6 @@ export default function Downloads() {
         </Alert>
       </Snackbar>
     </Container>
+    </Layout>
   );
 }
