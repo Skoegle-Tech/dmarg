@@ -244,11 +244,13 @@ const LiveVideoPlayer = () => {
   
   // Render loading state
   if (loading) {
-    return (
+    return (  <Layout title="Dmarg - Login">
+
       <div style={styles.loadingContainer}>
         <img src="/Loading.gif" alt="Loading" style={styles.loadingImage} />
         <p style={styles.loadingText}>Connecting to device...</p>
       </div>
+      </Layout>
     );
   }
 
