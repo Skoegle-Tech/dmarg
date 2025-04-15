@@ -134,7 +134,7 @@ const LiveVideoPlayer = () => {
     
     try {
       const response = await axios.get(
-        `https://production-server-tygz.onrender.com/api/dmarg/checklive?fromdate=${formattedDate}&todate=${formattedDate}&fromtime=${twoMinutesAgoTime}&totime=${currentTime}&deviceName=${selectedDevice}`
+        `https://api-dmarg.skoegle.com/api/dmarg/checklive?fromdate=${formattedDate}&todate=${formattedDate}&fromtime=${twoMinutesAgoTime}&totime=${currentTime}&deviceName=${selectedDevice}`
       );
       
       if (response.data.isLive) {
@@ -163,7 +163,7 @@ const LiveVideoPlayer = () => {
     
     try {
       const response = await axios.get(
-        `https://production-server-tygz.onrender.com/api/dmarg/filtervidios?fromdate=${formattedDate}&todate=${formattedDate}&fromtime=${fromTime}&totime=${currentTime}&deviceName=${selectedDevice}`
+        `https://api-dmarg.skoegle.com/api/dmarg/filtervidios?fromdate=${formattedDate}&todate=${formattedDate}&fromtime=${fromTime}&totime=${currentTime}&deviceName=${selectedDevice}`
       );
 
       if (response.data && response.data.length > 0) {

@@ -314,7 +314,7 @@ const VideoPlayer = () => {
     
     try {
       const response = await fetch(
-        `https://api.skoegle.com/api/dmarg/filtervidios?fromdate=${filter.fromDate}&todate=${filter.fromDate}&fromtime=${filter.fromTime}&totime=${filter.toTime}&deviceName=${filter.selectedDevice}`
+        `https://api-dmarg.skoegle.com/api/dmarg/filtervidios?fromdate=${filter.fromDate}&todate=${filter.fromDate}&fromtime=${filter.fromTime}&totime=${filter.toTime}&deviceName=${filter.selectedDevice}`
       );
       
       if (!response.ok) {
