@@ -36,10 +36,7 @@ export default function App() {
   const AdminRoute = ({ element }) => (isLogin && isAdmin ? element : <Navigate to="/login" />);
 
   const router = createBrowserRouter([
-    // {
-    //   path: "/",
-    //   element: maintanince ? <Serverissue /> : <ProtectedRoute element={<Live />} />,
-    // },
+   
     {
       path: "/",
       element: maintanince ? <Serverissue /> :<ProtectedRoute element={<Home/>} />,
@@ -64,10 +61,7 @@ export default function App() {
       path: "/settings",
       element: maintanince ? <Serverissue /> : <ProtectedRoute element={<Setings />} />,
     },
-    // {
-    //   element: maintanince ? <Serverissue /> : <ProtectedRoute element={<Track />} />,
-    // },   path: "/track",
-    //
+   
     {
       path: "/profile",
       element: maintanince ? <Serverissue /> : <ProtectedRoute element={<Profile />} />,

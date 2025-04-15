@@ -1,8 +1,12 @@
 import React, { useState, useEffect, useRef } from "react";
 import Layout from "../Layout/Layout";
+import { useStore } from "../Store/Store";
 
 
 const VideoPlayer = () => {
+
+
+ const {getFilteredVideos} =  useStore()
   // Date formatting helper
   const formatDate = (date) => {
     const d = new Date(date);
@@ -95,16 +99,9 @@ const VideoPlayer = () => {
     setError(null);
     
     try {
-      const response = await fetch(
-        `https://api.skoegle.com/api/dmarg/filtervidios?fromdate=${filter.fromDate}&todate=${filter.toDate}&fromtime=${filter.fromTime}&totime=${filter.toTime}&deviceName=${filter.selectedDevice}`
-      );
+    const data = await getFilteredVideos(filter);
       
-      if (!response.ok) {
-        throw new Error("Failed to fetch videos");
-      }
-      
-      const data = await response.json();
-      
+   
       if (data.length === 0) {
         setError("No videos found for the selected criteria.");
         setVideoData([]);
@@ -311,9 +308,10 @@ const VideoPlayer = () => {
                 )}
               </div>
               
-              <div style={styles.progressInfo}>
-                <span>Video: {currentVideoIndex + 1} of {videoData.length}</span>
+              <div style={{ ...styles.progressInfo, marginTop: '16px' }}>
+              <span>Video: {currentVideoIndex + 1} of {videoData.length}</span>
               </div>
+
             </>
           ) : (
             <div style={styles.noVideosMessage}>

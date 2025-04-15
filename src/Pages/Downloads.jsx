@@ -38,6 +38,8 @@ import {
   StepLabel,
 } from "@mui/material";
 import Layout from "../Layout/Layout";
+import { useStore } from "../Store/Store";
+
 
 
 export default function Downloads() {
@@ -90,6 +92,8 @@ export default function Downloads() {
   const [downloadDialogOpen, setDownloadDialogOpen] = useState(false);
   const [batchSize, setBatchSize] = useState(5); // Number of files per batch
   const [failedDownloads, setFailedDownloads] = useState([]);
+  const {getFilteredVideos} =  useStore()
+  
   
   // Refs for tracking download performance
   const downloadStartTimeRef = useRef(null);
@@ -209,25 +213,14 @@ export default function Downloads() {
   // Fetch videos from API with error handling
   const fetchVideos = useCallback(async () => {
     setFetchingData(true);
-    
     try {
-      const response = await fetch(
-        `https://production-server-tygz.onrender.com/api/dmarg/filtervidios?fromdate=${currentFilter.fromDate}&todate=${currentFilter.toDate}&fromtime=${currentFilter.fromTime}&totime=${currentFilter.toTime}&deviceName=${currentFilter.selectedDevice}`
-      );
+      const data = await getFilteredVideos(currentFilter);
       
-      if (!response.ok) {
-        throw new Error("Failed to fetch videos");
-      }
-      
-      const data = await response.json();
-      
-      if (data.length === 0) {
+      if (!data || data.length === 0) {
         showNotification("No videos found for the selected criteria", "info");
       } else {
         showNotification(`Found ${data.length} videos`, "success");
       }
-      
-      // Sort videos by time
       setVideoData(data.sort((a, b) => a.fromtime.localeCompare(b.fromtime)));
     } catch (err) {
       console.error(err.message);
@@ -236,7 +229,8 @@ export default function Downloads() {
     } finally {
       setFetchingData(false);
     }
-  }, [currentFilter]);
+  }, [currentFilter, getFilteredVideos]);
+
 
   // Display notification
   const showNotification = (message, severity = "info") => {

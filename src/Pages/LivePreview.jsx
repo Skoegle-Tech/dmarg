@@ -1,6 +1,9 @@
 import React, { useState, useEffect, useRef } from "react";
 import axios from "axios";
 import Layout from "../Layout/Layout";
+// import { checkLiveStatus } from "../Store/Dmarg";
+import { useStore } from "../Store/Store";
+
 
 
 const LiveVideoPlayer = () => {
@@ -16,6 +19,8 @@ const LiveVideoPlayer = () => {
   const [selectedDevice, setSelectedDevice] = useState("Device-1");
   const [liveStatus, setLiveStatus] = useState("Checking live status...");
   const [isMobile, setIsMobile] = useState(false);
+  const {checkLiveStatus, getFilteredVideos} =  useStore()
+
 
   // Refs
   const videoRef = useRef(null);
@@ -55,9 +60,8 @@ const LiveVideoPlayer = () => {
     const { currentTime, twoMinutesAgoTime } = getCurrentTimeInfo();
     
     try {
-      const response = await axios.get(
-        `https://production-server-tygz.onrender.com/api/dmarg/checklive?fromdate=${formattedDate}&todate=${formattedDate}&fromtime=${twoMinutesAgoTime}&totime=${currentTime}&deviceName=${selectedDevice}`
-      );
+      const data = await checkLiveStatus(filter);
+
       
       if (response.data.isLive) {
         setIsLive(true);
@@ -82,9 +86,8 @@ const LiveVideoPlayer = () => {
     const { currentTime } = getCurrentTimeInfo();
     
     try {
-      const response = await axios.get(
-        `https://production-server-tygz.onrender.com/api/dmarg/filtervidios?fromdate=${formattedDate}&todate=${formattedDate}&fromtime=${fromTime}&totime=${currentTime}&deviceName=${selectedDevice}`
-      );
+      const data = await getFilteredVideos(filter);
+
 
       if (response.data && response.data.length > 0) {
         const sortedData = response.data.sort((a, b) => {
