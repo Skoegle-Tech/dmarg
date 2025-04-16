@@ -1,12 +1,10 @@
-export const firebaseConfig = {
-    apiKey: "AIzaSyB3vFmUkVuYXeb5CgHKQVtPNq1CLu_fC1I",
-    authDomain: "skoegle.firebaseapp.com",
-    databaseURL: "https://skoegle-default-rtdb.firebaseio.com",
-    projectId: "skoegle",
-    storageBucket: "skoegle.appspot.com",
-    messagingSenderId: "850483861138",
-    appId: "1:850483861138:web:7db6db38eb81eb3dde384b",
-    measurementId: "G-9SB0PX663B",
+    export const firebaseConfig = {
+    apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
+    authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN,
+    databaseURL: import.meta.env.VITE_FIREBASE_DATABASE_URL,
+    projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID,
+    storageBucket: import.meta.env.VITE_FIREBASE_STORAGE_BUCKET,
+    messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID,
+    appId: import.meta.env.VITE_FIREBASE_APP_ID,
+    measurementId: import.meta.env.VITE_FIREBASE_MEASUREMENT_ID,
   };
-
-
