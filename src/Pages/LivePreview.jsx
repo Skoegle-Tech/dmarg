@@ -63,6 +63,9 @@ const LiveVideoPlayer = () => {
   const [deviceOptions, setDeviceOptions] = useState([]);
   const [deviceLoading, setDeviceLoading] = useState(true);
   const [noDevicesFound, setNoDevicesFound] = useState(false);
+  const {checkLiveStatus, getFilteredVideos} =  useStore()
+
+
 
   // Refs
   const videoRef = useRef(null);
@@ -126,69 +129,80 @@ const LiveVideoPlayer = () => {
   };
 
   // Function to check if the device is live
-  const checkDeviceLiveStatus = async () => {
-    if (!selectedDevice) return;
-    
-    setLiveStatus("Checking live status...");
-    const { currentTime, twoMinutesAgoTime } = getCurrentTimeInfo();
-    
-    try {
-      const response = await axios.get(
-        `https://api-dmarg.skoegle.com/api/dmarg/checklive?fromdate=${formattedDate}&todate=${formattedDate}&fromtime=${twoMinutesAgoTime}&totime=${currentTime}&deviceName=${selectedDevice}`
-      );
-      
-      if (response.data.isLive) {
-        setIsLive(true);
-        setLiveStatus("Device is live");
-        fetchVideos(); // Fetch initial videos if live
-      } else {
-        setIsLive(false);
-        setLiveStatus("Device is offline");
-        setError("Device is not currently transmitting live data.");
-      }
-    } catch (err) {
+// Function to check if the device is live
+// Updated `checkDeviceLiveStatus` to properly use `fromdate` and `todate`.
+const checkDeviceLiveStatus = async () => {
+  setLiveStatus("Checking live status...");
+  const { formattedDate, currentTime, twoMinutesAgoTime } = getCurrentTimeInfo();
+
+
+  try {
+    const response = await checkLiveStatus(
+      formattedDate,
+      twoMinutesAgoTime,
+      currentTime,
+      selectedDevice
+    );
+
+    if (response.isLive) {
+      setIsLive(true);
+      setLiveStatus("Device is live");
+      fetchVideos(); // Fetch videos if live
+    } else {
       setIsLive(false);
-      setError(`Error checking live status: ${err.message}`);
-      setLiveStatus("Connection error");
-    } finally {
-      setLoading(false);
+      setLiveStatus("Device is offline");
+      setError("Device is not currently transmitting live data.");
     }
+  } catch (err) {
+    setIsLive(false);
+    setError(`Error checking live status: ${err.message}`);
+    setLiveStatus("Connection error");
+  } finally {
+    setLoading(false);
+  }
+};
+
+// Function to fetch video data
+const fetchVideos = async () => {
+  if (!selectedDevice) return;
+
+  const { currentTime } = getCurrentTimeInfo();
+
+  const filter = {
+    fromDate: formattedDate,
+    toDate: formattedDate,
+    fromTime: fromTime,
+    toTime: currentTime,
+    deviceCode: selectedDevice
+
   };
 
-  // Function to fetch video data
-  const fetchVideos = async () => {
-    if (!selectedDevice) return;
-    
-    const { currentTime } = getCurrentTimeInfo();
-    
-    try {
-      const response = await axios.get(
-        `https://api-dmarg.skoegle.com/api/dmarg/filtervidios?fromdate=${formattedDate}&todate=${formattedDate}&fromtime=${fromTime}&totime=${currentTime}&deviceName=${selectedDevice}`
-      );
+  try {
+    const response = await getFilteredVideos(filter);  // Ensure filter is passed correctly
 
-      if (response.data && response.data.length > 0) {
-        const sortedData = response.data.sort((a, b) => {
-          const timeA = new Date(`1970-01-01T${a.fromtime}Z`).getTime();
-          const timeB = new Date(`1970-01-01T${b.fromtime}Z`).getTime();
-          return timeA - timeB;
-        });
-        
-        setVideoData(sortedData);
-        
-        // Set to the most recent video (last in the sorted array)
-        const newIndex = sortedData.length - 1;
-        setCurrentVideoIndex(newIndex);
-        
-        // Clear any previous errors
-        setError(null);
-      } else {
-        setError("No videos found for today.");
-        setVideoData([]);
-      }
-    } catch (err) {
-      setError(`Error fetching videos: ${err.message}`);
+    if (response.data && response.data.length > 0) {
+      const sortedData = response.data.sort((a, b) => {
+        const timeA = new Date(`1970-01-01T${a.fromtime}Z`).getTime();
+        const timeB = new Date(`1970-01-01T${b.fromtime}Z`).getTime();
+        return timeA - timeB;
+      });
+
+      setVideoData(sortedData);
+
+      // Set to the most recent video (last in the sorted array)
+      const newIndex = sortedData.length - 1;
+      setCurrentVideoIndex(newIndex);
+
+      // Clear any previous errors
+      setError(null);
+    } else {
+      setError("No videos found for today.");
+      setVideoData([]);
     }
-  };
+  } catch (err) {
+    setError(`Error fetching videos: ${err.message}`);
+  }
+};
 
   // Function to handle video end event
   const handleVideoEnd = () => {

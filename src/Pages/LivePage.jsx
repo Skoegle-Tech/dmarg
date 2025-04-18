@@ -111,7 +111,7 @@ const VideoPlayer = () => {
   const [currentTime, setCurrentTime] = useState("00:00:00");
   const [volume, setVolume] = useState(1);
   const [showControls, setShowControls] = useState(true);
-
+  const {getFilteredVideos} =useStore()
   // Refs
   const videoRef = useRef(null);
   const nextVideoRef = useRef(null);
@@ -313,15 +313,7 @@ const VideoPlayer = () => {
     setError(null);
     
     try {
-      const response = await fetch(
-        `https://api-dmarg.skoegle.com/api/dmarg/filtervidios?fromdate=${filter.fromDate}&todate=${filter.fromDate}&fromtime=${filter.fromTime}&totime=${filter.toTime}&deviceName=${filter.selectedDevice}`
-      );
-      
-      if (!response.ok) {
-        throw new Error("Failed to fetch videos");
-      }
-      
-      const data = await response.json();
+    const data =  await getFilteredVideos(filter)
       
       if (data.length === 0) {
         setError("No videos found for the selected criteria.");

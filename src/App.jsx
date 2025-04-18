@@ -3,20 +3,21 @@ import { createBrowserRouter, RouterProvider, Navigate } from "react-router-dom"
 import { useStore } from "./Store/Store";
 import { Box, CircularProgress } from "@mui/material";
 import Layout from "./Layout/Layout"; // Ensure Layout is imported
-import Live from "./Pages/Live/Live";
-import Profile from "./Pages/Profile";
-import Admin from "./Pages/Admin/Admin";
-import Forgotpassword from "./Pages/Forgotpassword";
-import Resetpassword from "./Pages/Resetpassword";
-import Serverissue from "./Pages/Serverissue"; // Server Issue page
-import Downloads from "./Pages/Downloads";
-import Home from "./Pages/Home";
-import LivePreview from "./Pages/LivePreview";
+
 
 // Lazy loading components
 const Login = React.lazy(() => import("./Pages/Login"));
 const SignUp = React.lazy(() => import("./Pages/Signup"));
 const Setings = React.lazy(() => import("./Pages/Register/Setings"));
+const LivePreview = React.lazy(() => import("./Pages/LivePreview"));
+const LivePage = React.lazy(() => import("./Pages/LivePage"));
+const Downloads = React.lazy(() => import("./Pages/Downloads"));
+const Serverissue = React.lazy(() => import("./Pages/Serverissue"));
+const Resetpassword = React.lazy(() => import("./Pages/Resetpassword"));
+const Forgotpassword = React.lazy(() => import("./Pages/Forgotpassword"));  
+const Admin = React.lazy(() => import("./Pages/Admin/Admin"));
+const Profile = React.lazy(() => import("./Pages/Profile"));
+
 
 function Loading() {
   return (
@@ -36,13 +37,10 @@ export default function App() {
   const AdminRoute = ({ element }) => (isLogin && isAdmin ? element : <Navigate to="/login" />);
 
   const router = createBrowserRouter([
-    // {
-    //   path: "/",
-    //   element: maintanince ? <Serverissue /> : <ProtectedRoute element={<Live />} />,
-    // },
+   
     {
       path: "/",
-      element: maintanince ? <Serverissue /> :<ProtectedRoute element={<Home/>} />,
+      element: maintanince ? <Serverissue /> :<ProtectedRoute element={<LivePage/>} />,
     },
     {
       path: "/signup",
@@ -57,17 +55,14 @@ export default function App() {
       element: maintanince ? <Serverissue /> : <GuestRoute element={<Forgotpassword />} />,
     },
     {
-      path: "/Resetpassword",
+      path: "/resetpassword",
       element: maintanince ? <Serverissue /> : <GuestRoute element={<Resetpassword />} />,
     },
     {
       path: "/settings",
       element: maintanince ? <Serverissue /> : <ProtectedRoute element={<Setings />} />,
     },
-    // {
-    //   element: maintanince ? <Serverissue /> : <ProtectedRoute element={<Track />} />,
-    // },   path: "/track",
-    //
+   
     {
       path: "/profile",
       element: maintanince ? <Serverissue /> : <ProtectedRoute element={<Profile />} />,
@@ -81,17 +76,9 @@ export default function App() {
       element: maintanince ? <Serverissue /> : <ProtectedRoute element={<Downloads />} />,
     },
     {
-      path: "/home",
+      path: "/livepage",
       element: maintanince ? <Serverissue /> : <ProtectedRoute element={<LivePreview />} />,
-    },
-    {
-      path: "/",
-      element: maintanince ? <Serverissue /> : <ProtectedRoute element={<LivePreview />} />,
-    },
-    // {
-    //   path :"/home",
-    //   element: maintanince ? <Serverissue /> : <ProtectedRoute element={<Home />} />,
-    // },
+    },  
   ]);
 
   return (

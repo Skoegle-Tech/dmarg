@@ -250,8 +250,8 @@ export default function Navbar() {
             <ListItem 
               button 
               component={Link} 
-              to="/home"
-              selected={isActive('/home')}
+              to="/livepage"
+              selected={isActive('/livepage')}
               sx={{
                 borderRadius: '0 20px 20px 0',
                 mx: 1,
@@ -452,11 +452,11 @@ export default function Navbar() {
               </Button>
               <Button 
                 component={Link} 
-                to="/home" 
-                variant={isActive('/home') ? "contained" : "text"}
+                to="/livepage" 
+                variant={isActive('/livepage') ? "contained" : "text"}
                 startIcon={<MyLocationIcon />}
                 sx={{ 
-                  color: isActive('/home') ? "primary.contrastText" : "white",
+                  color: isActive('/livepage') ? "primary.contrastText" : "white",
                   px: 2,
                   py: 0.8,
                   borderRadius: '20px',
