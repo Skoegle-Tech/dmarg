@@ -34,7 +34,7 @@ const Menu = () => {
   useEffect(() => {
     const path = location.pathname;
     if (path === '/') setValue(0);
-    else if (path === '/track') setValue(1);
+    else if (path === '/livepage') setValue(1);
     else if (path === '/settings') setValue(2);
     else if (path === '/profile') setValue(3);
     else if (path === '/mbpannel/admin') setValue(4);

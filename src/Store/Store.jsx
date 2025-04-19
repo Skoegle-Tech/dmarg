@@ -5,6 +5,8 @@ import { fetchDevicesByCustomerId,GetRegisterdDevices,deleteDeviceByDeviceString
 import { addGeofencingDevice, deleteGeofencingDevice, getGeofencingData, getRealTimeData, updateGeofencingRadius } from "./Geofencing";
 import { addDevice, logRealtimeData } from "./Register";
 import { sendOtpByEmail,  sendOtpBySms, verifyOtp, sendCustomMessageByEmail,sendCustomMessageBySms  } from "./Smtp";
+import { getFilteredVideos, checkLiveStatus } from "./Dmarg";
+
 
 const StoreContext = createContext(null);
 
@@ -100,7 +102,9 @@ export function StoreProvider({ children }) {
         setskipemailotp,
         skipemailotp,
         setskipsmsotp,
-        skipsmsotp
+        skipsmsotp,
+        getFilteredVideos,
+        checkLiveStatus
 
 
         

@@ -114,7 +114,7 @@ export default function Downloads() {
   const [downloadDialogOpen, setDownloadDialogOpen] = useState(false);
   const [batchSize, setBatchSize] = useState(5); // Number of files per batch
   const [failedDownloads, setFailedDownloads] = useState([]);
-  
+ const {getFilteredVideos}=  useStore()
   // Refs for tracking download performance
   const downloadStartTimeRef = useRef(null);
   const speedMeasurementsRef = useRef([]);
@@ -272,21 +272,14 @@ export default function Downloads() {
 
   // Fetch videos from API with error handling
   const fetchVideos = useCallback(async () => {
+    console.log("Fetching videos with filter:", currentFilter);
     if (!currentFilter.selectedDevice) return;
     
     setFetchingData(true);
-    
+    // currentFilter.toDate = currentFilter.fromDate; // Use the same date for both fromDate and toDate
     try {
       // Using the same fromDate for both fromdate and todate params
-      const response = await fetch(
-        `https://production-server-tygz.onrender.com/api/dmarg/filtervidios?fromdate=${currentFilter.fromDate}&todate=${currentFilter.fromDate}&fromtime=${currentFilter.fromTime}&totime=${currentFilter.toTime}&deviceName=${currentFilter.selectedDevice}`
-      );
-      
-      if (!response.ok) {
-        throw new Error("Failed to fetch videos");
-      }
-      
-      const data = await response.json();
+     const data = await getFilteredVideos(currentFilter)
       
       if (data.length === 0) {
         showNotification("No videos found for the selected criteria", "info");
